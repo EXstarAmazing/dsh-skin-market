@@ -39,7 +39,7 @@ ${compatibilityStep}
 1. Web 版只读检查 web profile 的 package.json（dependencies 与 dsh.profile.bundles）、profile 的 cordis.patch.yml 和 $DSH_HOME/cordis.patch.yml（如有）。
 2. 从当前启用的 bundles 中识别其他皮肤、主题或外观插件；排除 @deepseek-ai/dsh-base、@deepseek-ai/dsh-web-app、dsh-skin-market 和本次目标仓库或 package。读取候选 package.json 的名称、描述、dsh.client/dsh.bundle 声明，必要时再读 README。
 3. 发现其他已启用的皮肤插件时，列出它们并停在安装前，提醒我先停用；未经我确认不得修改 profile，也不得执行安装。
-4. 没有冲突时，明确说“未检测到其他已启用的皮肤插件”，再执行上面的固定安装命令。
+4. 没有冲突时，明确说“未检测到其他已启用的皮肤插件”；Web 才执行上面的固定安装命令，官方 Desktop 只在「设置 → 皮肤市场」中安装。
 5. 安装后验证对应 profile 的 dependencies、bundle 和目标 package 的 dsh.client/dsh.bundle 声明及 loader 注册项；缺失则报告失败。
 6. 告诉我如何重启当前 DSH 宿主。不要替我安装、停用或卸载其他皮肤。`
 }
