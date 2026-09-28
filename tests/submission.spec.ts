@@ -49,8 +49,8 @@ describe('agent-assisted skin submission', () => {
     expect(prompt).toContain('必须先完成只读冲突检查')
     expect(prompt).toContain('停在安装前')
     expect(prompt).toContain('未经我确认不得修改任何 profile 文件，也不得执行安装')
-    expect(prompt.indexOf('安装前只读检查')).toBeLessThan(prompt.indexOf('然后执行上面的全部固定安装命令'))
-    expect(createSkinInstallCommand(skin)).toBe(`dsh plugin --profile web add "${skin.install.target}"`)
+    expect(prompt.indexOf('安装前只读检查')).toBeLessThan(prompt.indexOf('Web 才执行上面的全部固定安装命令'))
+    expect(createSkinInstallCommand(skin)).toBe(`# Web 版\ndsh plugin --profile web add "${skin.install.target}"\n\n# 官方桌面版：不要在终端执行；在「设置 → 皮肤市场」中打开该皮肤并安装`)
   })
 
   it('copies subdirectory install targets as pnpm add so Windows cmd does not split on &', () => {
@@ -85,9 +85,9 @@ describe('agent-assisted skin submission', () => {
         allowBuild: 'github-only-build-key',
         npm: { name: 'example-skin', version: '1.2.3', repository: 'https://github.com/example/skin', integrity: 'sha512-abc', gitHead: 'a'.repeat(40) } },
     } as CatalogSkin
-    expect(createSkinInstallCommand(skin)).toBe('dsh plugin --profile web add "example-skin@1.2.3" --save-exact')
+    expect(createSkinInstallCommand(skin)).toBe('# Web 版\ndsh plugin --profile web add "example-skin@1.2.3" --save-exact\n\n# 官方桌面版：不要在终端执行；在「设置 → 皮肤市场」中打开该皮肤并安装')
     const prompt = createSkinInstallPrompt(skin)
-    expect(prompt).toContain('安装目标：example-skin@1.2.3')
+    expect(prompt).toContain('固定安装目标：example-skin@1.2.3')
     expect(prompt).not.toContain('github-only-build-key')
     expect(prompt).not.toContain(skin.install.target)
   })

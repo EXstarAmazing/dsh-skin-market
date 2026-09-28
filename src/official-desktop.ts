@@ -1,0 +1,142 @@
+import type { CommandOptions, CommandResult, PluginInstallRequest, PluginRunner } from './commands.ts'
+
+/**
+ * The official Electron Desktop host owns profile mutations through this
+ * Remote. Keep the shape structural so the market does not take a runtime
+ * dependency on the Desktop application package.
+ */
+export interface OfficialPluginManagerLike {
+  installBundle(spec: string, options?: Record<string, unknown>): Promise<unknown>
+  removeBundle(name: string): Promise<unknown>
+  cancelInstall?(requestId: string): Promise<unknown>
+}
+
+type RecordLike = Record<string, unknown>
+
+function asRecord(value: unknown): RecordLike | undefined {
+  return typeof value === 'object' && value !== null && !Array.isArray(value) ? value as RecordLike : undefined
+}
+
+function resultText(value: unknown): string {
+  const record = asRecord(value)
+  const error = record?.error
+  if (typeof error === 'string' && error.trim() !== '') return error
+  const errorRecord = asRecord(error)
+  if (typeof errorRecord?.message === 'string' && errorRecord.message.trim() !== '') return errorRecord.message
+  const packageResult = asRecord(record?.packageResult)
+  if (typeof packageResult?.message === 'string' && packageResult.message.trim() !== '') return packageResult.message
+  try {
+    const json = JSON.stringify(value)
+    return json === undefined ? String(value) : json
+  } catch {
+    return String(value)
+  }
+}
+
+function resultFailed(value: unknown): boolean {
+  const record = asRecord(value)
+  if (record === undefined) return false
+  return record.ok === false
+    || record.success === false
+    || record.application === 'failed'
+    || record.changed === 'failed'
+    || asRecord(record.packageResult)?.exitCode !== undefined && asRecord(record.packageResult)?.exitCode !== 0
+}
+
+function managerResult(value: unknown): CommandResult {
+  const output = resultText(value)
+  if (resultFailed(value)) return { exitCode: 1, stdout: '', stderr: output, timedOut: false, aborted: false }
+  return { exitCode: 0, stdout: output, stderr: '', timedOut: false, aborted: false }
+}
+
+function managerError(error: unknown, options?: CommandOptions, timedOut = false): CommandResult {
+  return {
+    exitCode: null,
+    stdout: '',
+    stderr: error instanceof Error ? error.message : String(error),
+    timedOut,
+    aborted: options?.signal?.aborted === true,
+  }
+}
+
+async function callManager(
+  operation: () => Promise<unknown>,
+  options?: CommandOptions,
+  cancel?: () => Promise<unknown> | undefined,
+): Promise<CommandResult> {
+  const stopped = options?.signal?.aborted === true || options?.timeoutMs !== undefined && options.timeoutMs <= 0
+  if (stopped) return {
+    exitCode: null,
+    stdout: '',
+    stderr: '',
+    timedOut: options?.signal?.aborted !== true && options?.timeoutMs !== undefined && options.timeoutMs <= 0,
+    aborted: options?.signal?.aborted === true,
+  }
+  let timedOut = false
+  let cancellation: Promise<unknown> | undefined
+  const requestCancel = (): void => {
+    if (cancellation !== undefined || cancel === undefined) return
+    try { cancellation = cancel() } catch { /* the operation result remains authoritative */ }
+  }
+  const onAbort = (): void => requestCancel()
+  options?.signal?.addEventListener('abort', onAbort, { once: true })
+  const timer = options?.timeoutMs === undefined ? undefined : setTimeout(() => {
+    timedOut = true
+    requestCancel()
+  }, Math.max(0, options.timeoutMs))
+  try {
+    const value = await operation()
+    if (cancellation !== undefined) await cancellation.catch(() => undefined)
+    const result = managerResult(value)
+    return { ...result, timedOut, aborted: options?.signal?.aborted === true }
+  } catch (error) {
+    if (cancellation !== undefined) await cancellation.catch(() => undefined)
+    return managerError(error, options, timedOut)
+  } finally {
+    if (timer !== undefined) clearTimeout(timer)
+    options?.signal?.removeEventListener('abort', onAbort)
+  }
+}
+
+function targetAfterVerb(args: readonly string[]): string | undefined {
+  return args.slice(1).find(argument => !argument.startsWith('-'))
+}
+
+/**
+ * Adapt the official Desktop plugin manager to the market's existing runner.
+ * The manager is looked up for every operation because its Remote is owned by
+ * the current Cordis generation and may not survive a profile switch.
+ */
+export function officialDesktopRunner(
+  getManager: () => OfficialPluginManagerLike | undefined,
+): PluginRunner {
+  const runner: PluginRunner = async (_profile, args, options) => {
+    const manager = getManager()
+    if (manager === undefined) return managerError(new Error('官方 Desktop 未提供 pluginManager'), options)
+    const verb = args[0]
+    if (verb === 'remove') {
+      const target = targetAfterVerb(args)
+      if (target === undefined) return managerError(new Error('官方 Desktop remove 缺少插件名'), options)
+      return await callManager(() => manager.removeBundle(target), options)
+    }
+    if (verb === 'add') {
+      const target = targetAfterVerb(args)
+      if (target === undefined) return managerError(new Error('官方 Desktop add 缺少插件目标'), options)
+      return await callManager(() => manager.installBundle(target, { enabled: false }), options)
+    }
+    return managerError(new Error(`官方 Desktop pluginManager 不支持 ${verb ?? '空命令'}`), options)
+  }
+  runner.hostKind = 'desktop'
+  runner.ensurePnpm = async () => undefined
+  runner.installPlugin = async (_profile, request: PluginInstallRequest, options) => {
+    const manager = getManager()
+    if (manager === undefined) return managerError(new Error('官方 Desktop 未提供 pluginManager'), options)
+    const target = `${request.packageName}@${request.packageVersion}`
+    return await callManager(
+      () => manager.installBundle(target, { enabled: false, requestId: request.receiptId }),
+      options,
+      manager.cancelInstall === undefined ? undefined : () => manager.cancelInstall!(request.receiptId),
+    )
+  }
+  return runner
+}

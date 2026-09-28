@@ -11,10 +11,31 @@ export function sendText(response: ServerResponse, status: number, value: string
   response.end(value)
 }
 
+/**
+ * Whether a Host header names a loopback authority.
+ *
+ * The Desktop proxy may remove Host before forwarding a request into the
+ * in-process DSH server, so an absent header is handled by sameOrigin below.
+ * When it is present, keep the DNS-rebinding guard: a public page must not be
+ * able to make a matching Origin/Host pair for an arbitrary authority.
+ */
+export function loopbackAuthority(host: string | undefined): boolean {
+  if (host === undefined) return false
+  const lower = host.toLowerCase()
+  const name = lower.startsWith('[') ? lower.slice(0, lower.indexOf(']') + 1) : lower.split(':')[0]!
+  return name === '127.0.0.1' || name === 'localhost' || name === '[::1]'
+}
+
+/**
+ * Accept same-origin browser requests and the official Desktop proxy's
+ * header-stripped requests. A missing Origin is allowed because the proxy
+ * strips it; a present but invalid/cross-site Origin remains rejected.
+ */
 export function sameOrigin(request: IncomingMessage): boolean {
-  const origin = request.headers.origin
   const host = request.headers.host
-  if (typeof origin !== 'string' || typeof host !== 'string') return false
+  if (host !== undefined && !loopbackAuthority(host)) return false
+  const origin = request.headers.origin
+  if (origin === undefined) return true
   try { return new URL(origin).host === host } catch { return false }
 }
 

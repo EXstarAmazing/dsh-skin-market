@@ -21,36 +21,31 @@
 
 ## 安装
 
-#### 方式一，命令安装：
+#### 命令安装：
 
 > 安装前请确保已关闭其他皮肤插件，避免冲突
 
 ```sh
+# Web 版
 dsh plugin --profile web add "dsh-skin-market@latest"
+
+# 官方桌面版：不要在终端执行；在桌面应用「插件 → 添加插件」中输入并启用
+dsh-skin-market@latest
 ```
 
-
-
-#### 方式二，提示词安装：
+#### 提示词安装：
 <details>
 <summary><strong>点击展开提示词</strong></summary>
 
-复制以下给 DSH 即可，会先检查冲突，再安装皮肤市场
+复制以下给 DSH Agent；它会先判断宿主，再选择安装方式。
 
 ```text
-请把 dsh-skin-market 插件安装到 DSH 的 web profile。不能先安装再检查，必须严格按以下顺序执行：
+请安装 dsh-skin-market。先运行 dsh --version，并根据当前宿主和实际 profile 的 package.json/bundles 判断是 Web 版还是官方 Desktop；无法判断就先问我。
 
-1. 安装前只读检查 web profile 的 package.json（dependencies 与 dsh.profile.bundles）、profile 的 cordis.patch.yml 和 $DSH_HOME/cordis.patch.yml（如有）。
-2. 从当前启用的 bundles 中识别皮肤、主题或外观插件：排除 @deepseek-ai/dsh-base、@deepseek-ai/dsh-web-app 和 dsh-skin-market；读取候选 package.json 的名称、描述、dsh.client/dsh.bundle 声明，必要时再读 README。无法确定的候选先列出包名和描述。
-3. 如果发现已启用的皮肤插件，列出它们并停在安装前，提醒我先停用以避免冲突；未经我确认不得修改任何 profile 文件，也不得执行安装。
-4. 如果没有冲突，明确说“未检测到已启用的皮肤插件”，然后直接执行：
+- Web 版：先检查冲突，再执行 dsh plugin --profile web add "dsh-skin-market@latest"。
+- 官方 Desktop：不要执行 dsh plugin --profile desktop；在桌面应用「插件 → 添加插件」中输入 dsh-skin-market@latest 并启用。
 
-dsh plugin --profile web add "dsh-skin-market@latest"
-
-5. 安装后读取 web profile 的 package.json，确认 dependencies 和 dsh.profile.bundles 中都有 dsh-skin-market；缺失则报告安装或注册失败。
-6. 告诉我如何重启 DSH Web，并确认重启后可从“设置 → 皮肤市场”打开。不要替我安装任何皮肤。
-
-如果安装命令报错（例如 pnpm 不在 PATH、allowBuilds 构建审批、manifest 缺失），再读 https://github.com/kingOfSoySauce/dsh-skin-market 的 README「安装失败时，可以让 DSH 自己排查」一节处理，或把完整报错贴给我。
+安装前只读检查当前宿主实际 profile，发现其他皮肤插件就列出并停下；没有冲突才安装。安装后验证同一 profile 中有 dsh-skin-market 的依赖和 bundle，并告诉我重启哪个宿主、从哪里打开「皮肤市场」。不要替我安装其他皮肤。
 ```
 
 </details>
@@ -62,7 +57,7 @@ dsh plugin --profile web add "dsh-skin-market@latest"
 
 > 皮肤市场的安装、更新和卸载会调用 DSH 的 profile 插件管理器；当前 DSH 使用 `pnpm` 管理 profile 依赖。如果出现 `pnpm is not recognized`、`package manifest missing` 或 `allowBuilds` 相关报错，不必手动猜测 profile 状态。
 >
-> 含子目录路径的 GitHub 目标（`github:…#commit&path:/…`）请优先用市场页一键安装。市场安装结束后会校验 `node_modules` 中的包名是否与目录一致，避免 `&path:` 被截断时误把仓库根包装成成功。Windows 上不要把这段 spec 交给 `dsh plugin add`：cmd.exe 会在 `&` 处截断。需要手动安装时用：
+> 含子目录路径的 GitHub 目标（`github:…#commit&path:/…`）请优先用市场页一键安装。市场安装结束后会校验 `node_modules` 中的包名是否与目录一致，避免 `&path:` 被截断时误把仓库根包装成成功。Windows 上不要把这段 spec 交给 `dsh plugin add`：cmd.exe 会在 `&` 处截断。下面的手动命令仅适用于 Web profile；官方 Desktop 请使用桌面插件管理器：
 >
 > ```powershell
 > pnpm add "github:owner/repo#<commit>&path:/subdir" --dir $env:USERPROFILE\.dsh\profiles\web
@@ -73,14 +68,16 @@ dsh plugin --profile web add "dsh-skin-market@latest"
 <details>
 <summary><strong>点击展开排查提示词</strong></summary>
 
-把完整原始报错填入后复制给你的 DSH Agent：
+把完整原始报错填入后复制给你的 DSH Agent。它会先判断当前是 Web 还是官方 Desktop；无法判断时先询问你：
 
 ```text
-请帮我排查 DSH Web 皮肤市场的安装失败。下面是完整原始报错：
+请帮我排查 DSH 皮肤市场的安装或启用失败。先运行 dsh --version，并根据当前宿主和实际 profile 判断是 Web 版还是官方 Desktop；无法判断就先问我。下面是完整原始报错：
 
 <把完整报错粘贴到这里>
 
-请严格按以下 3 步处理，并报告每一步的结果：
+如果是官方 Desktop：只读检查桌面应用插件管理器中的 dsh-skin-market 状态和完整原始错误；不要执行 dsh plugin --profile desktop，也不要手动修改 profile。若错误是 same-origin request required，请报告该错误并停止，不要猜测或重写 profile。
+
+如果是 Web 版，请严格按以下 3 步处理，并报告每一步的结果：
 
 1. 确认当前使用的 profile 名称和实际目录，并检查 DSH 进程自身是否能找到 pnpm（Windows 同时检查 pnpm.cmd）。如果 pnpm 不在 PATH，先说明如何安装或修复 pnpm，并停止把问题误判为 allowBuilds 配置问题。如果报错含 ERR_PNPM_UNEXPECTED_STORE，再比较 profile 的 node_modules/.modules.yaml（packageManager、storeDir）与「在 profile 目录内」执行的 pnpm --version / pnpm store path；不要用 DSH 源码仓库目录里的 pnpm 版本来判断。用同一版 pnpm 重试，或用当前 pnpm 重建该 profile 的 node_modules。
 2. 只有确认 pnpm 可用且 store 一致后，才检查 profile 的 pnpm-workspace.yaml。若 pnpm 输出了构建审批 key，只把报错中完整、精确的 key 合并到 allowBuilds，对应值设为 true；不要启用 dangerouslyAllowAllBuilds，也不要放宽其他包。不要读取 .env、凭据或聊天记录。
@@ -102,32 +99,32 @@ Web 市场优先使用目录中已经核验的 npm 精确版本；没有合格 n
 
 #### 方式一，页面更新（推荐）：
 
-在「设置 → 皮肤市场」标题右侧点击“更新”，完成后会提醒重启 DSH Web。
+在「设置 → 皮肤市场」标题右侧点击“更新”，完成后按界面提示重启 DSH Web 或官方 Desktop。
 
 #### 方式二，命令更新：
 
 ```bash
+# Web 版
 dsh plugin --profile web add "dsh-skin-market@latest"
+
+# 官方桌面版：不要在终端执行；在桌面应用「插件 → 添加插件」中输入并启用
+dsh-skin-market@latest
 ```
-> 完成后需手动重启 DSH
+> 完成后按界面提示重启对应宿主。
 
 #### 方式三，提示词更新：
 <details>
 <summary><strong>点击展开提示词</strong></summary>
 
-复制以下内容给 DSH Agent：
+复制以下内容给 DSH Agent；它会先判断宿主，再选择更新方式：
 
 ```text
-请把已安装在 DSH Web profile 的 dsh-skin-market 更新到 npm 最新版本。
+请更新已安装的 dsh-skin-market。先运行 dsh --version，并根据当前宿主和实际 profile 判断是 Web 版还是官方 Desktop；无法判断就先问我。
 
-请严格按以下顺序执行：
-1. 确认当前使用的是 web profile，并读取其 package.json，确认已安装 dsh-skin-market；不要先卸载，也不要修改其他皮肤。
-2. 执行：
+- Web 版：只读确认 web profile 已安装 dsh-skin-market，再执行 dsh plugin --profile web add "dsh-skin-market@latest"。
+- 官方 Desktop：不要执行 dsh plugin --profile desktop；在桌面应用「插件 → 添加插件」中输入 dsh-skin-market@latest 并启用。
 
-dsh plugin --profile web add "dsh-skin-market@latest"
-
-3. 更新后重新读取 web profile 的 package.json，确认 dsh-skin-market 依赖和 bundle 注册仍然存在。
-4. 告诉我更新前后版本，并提醒我确认没有 Agent 正在运行后重启 DSH Web。不要替我更新或卸载任何社区皮肤。
+更新后验证同一宿主的 dsh-skin-market 依赖和 bundle，告诉我更新前后版本及需要重启哪个宿主。不要替我更新或卸载其他皮肤。
 ```
 
 </details>
